@@ -1,0 +1,14 @@
+﻿[project]
+name = "xlsx-month-roll"
+version = "0.1.0"
+description = "Excel の月の表記と日付を、書式を崩さずに次の月へ進めるコマンド"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = []
+
+[project.scripts]
+xlsxroll = "xlsxroll.__main__:main"
+
+[tool.setuptools]
+packages = ["xlsxroll"]
