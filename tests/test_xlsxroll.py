@@ -4,6 +4,7 @@ import unittest
 import zipfile
 from datetime import date
 from pathlib import Path
+from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "examples"))
@@ -14,6 +15,25 @@ from xlsxroll.__main__ import main  # noqa: E402
 from xlsxroll.core import add_months, roll  # noqa: E402
 
 PAIRS = [("2026/09/01-2026/09/30", "2026/10/01-2026/10/31"), ("9月", "10月")]
+
+
+def make_with_number_cell(path: Path, format_code: str) -> None:
+    """見本に、独自の表示形式 format_code で 12345 を入れたセル B7 を足す。"""
+    make(path)
+    with zipfile.ZipFile(path) as z:
+        parts = {name: z.read(name).decode("utf-8") for name in z.namelist()}
+    code = escape(format_code, {'"': "&quot;"})
+    parts["xl/styles.xml"] = (
+        parts["xl/styles.xml"]
+        .replace('<numFmts count="1">', f'<numFmts count="2"><numFmt numFmtId="177" formatCode="{code}"/>')
+        .replace('<cellXfs count="5">', '<cellXfs count="6">')
+        .replace("</cellXfs>", '<xf numFmtId="177" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>')
+    )
+    parts["xl/worksheets/sheet1.xml"] = parts["xl/worksheets/sheet1.xml"].replace(
+        "</sheetData>", '<row r="7"><c r="B7" s="5"><v>12345</v></c></row></sheetData>')
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
+        for name, xml in parts.items():
+            z.writestr(name, xml)
 
 
 class AddMonthsTest(unittest.TestCase):
@@ -50,6 +70,19 @@ class RollTest(unittest.TestCase):
         self.assertEqual(got["B4"], ("2026-10-31", "2026-11-30"))  # 組み込みの日付の表示形式・月末
         self.assertNotIn("B5", got)  # 金額（桁区切り）は日付ではない
         self.assertNotIn("B6", got)  # 式のセルは触らない
+
+    def test_non_date_custom_formats_are_not_shifted(self):
+        for code in ["0.00E+00", "##0.0e-0"]:  # 指数表示の E / e を日付の e（年号）と取り違えない
+            with self.subTest(code=code):
+                make_with_number_cell(self.src, code)
+                report = roll(self.src, self.dst, [], shift_months=1)
+                self.assertNotIn("B7", [c.cell for c in report.changes])
+                self.assertIn('<c r="B7" s="5"><v>12345</v></c>', self.read(self.dst, "xl/worksheets/sheet1.xml"))
+
+    def test_custom_date_format_with_era_is_shifted(self):
+        make_with_number_cell(self.src, '[$-411]ggge"年"m"月"d"日"')
+        report = roll(self.src, None, [], shift_months=1)
+        self.assertIn(("B7", "1933-10-18", "1933-11-18"), [(c.cell, c.before, c.after) for c in report.changes])
 
     def test_untouched_parts_are_byte_identical(self):
         roll(self.src, self.dst, PAIRS, shift_months=1)
