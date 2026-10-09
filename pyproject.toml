@@ -1,6 +1,6 @@
 ﻿[project]
 name = "xlsx-month-roll"
-version = "0.1.0"
+version = "0.1.1"
 description = "Excel の月の表記と日付を、書式を崩さずに次の月へ進めるコマンド"
 readme = "README.md"
 requires-python = ">=3.11"
