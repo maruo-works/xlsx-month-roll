@@ -92,8 +92,8 @@ def _date_styles(styles_xml: str) -> set[int]:
     """日付として表示される書式（cellXfs の番号）を集める。"""
     custom = {}
     for m in re.finditer(r'<numFmt\b[^>]*numFmtId="(\d+)"[^>]*formatCode="([^"]*)"', styles_xml):
-        # 引用符の中・[…]・\ 付きの文字と、指数表示の E+ / E- は日付の目印にしない
-        code = re.sub(r'"[^"]*"|\[[^\]]*\]|\\.|[eE][+-]', "", unescape(m.group(2))).lower()
+        # 引用符の中・[…]・\ 付きの文字と、指数表示の E+ / E-、標準（General）は日付の目印にしない
+        code = re.sub(r'"[^"]*"|\[[^\]]*\]|\\.|[eE][+-]|(?i:general)', "", unescape(m.group(2))).lower()
         custom[int(m.group(1))] = "y" in code or "d" in code or "e" in code or "g" in code
     xfs = re.search(r"<cellXfs\b.*?</cellXfs>", styles_xml, re.S)
     result = set()

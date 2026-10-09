@@ -72,7 +72,8 @@ class RollTest(unittest.TestCase):
         self.assertNotIn("B6", got)  # 式のセルは触らない
 
     def test_non_date_custom_formats_are_not_shifted(self):
-        for code in ["0.00E+00", "##0.0e-0"]:  # 指数表示の E / e を日付の e（年号）と取り違えない
+        # 指数表示の E / e や、標準（General）の e・g を、日付の e・g（年号）と取り違えない
+        for code in ["0.00E+00", "##0.0e-0", "General", 'General"円"']:
             with self.subTest(code=code):
                 make_with_number_cell(self.src, code)
                 report = roll(self.src, self.dst, [], shift_months=1)
